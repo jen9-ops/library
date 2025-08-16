@@ -10,9 +10,23 @@ const applySettingsBtn = document.getElementById('applySettingsBtn');
 const settingsPanel = document.getElementById('settingsPanel');
 const jsCodeEditor = document.getElementById('jsCodeEditor');
 const bootstrapModeCheckbox = document.getElementById('bootstrapMode');
+const bootstrapStyleSelect = document.getElementById('bootstrapStyle');
 const mediaSettingsDiv = document.getElementById('mediaSettings');
+const addLibraryBtn = document.getElementById('addLibraryBtn');
+const toggleBootstrapBtn = document.getElementById('toggleBootstrapBtn');
+const saveProjectBtn = document.getElementById('saveProjectBtn');
+const openLocalProjectBtn = document.getElementById('openLocalProjectBtn');
+const showCodeBtn = document.getElementById('showCodeBtn');
+const cameraBtn = document.getElementById('cameraBtn');
+const cameraStream = document.getElementById('cameraStream');
+const cameraCanvas = document.getElementById('cameraCanvas');
 
 let activeElement = null;
+
+// Обработчик для переключения стиля Bootstrap
+bootstrapModeCheckbox.addEventListener('change', () => {
+    bootstrapStyleSelect.style.display = bootstrapModeCheckbox.checked ? 'block' : 'none';
+});
 
 // Открытие и закрытие модальных окон
 function openModal(modalId) {
@@ -53,7 +67,6 @@ elementList.addEventListener('click', (event) => {
     } else if (elementType === 'canvas') {
         newElement.width = 150;
         newElement.height = 100;
-        newElement.textContent = "Canvas";
         const ctx = newElement.getContext('2d');
         ctx.fillStyle = '#007bff';
         ctx.fillRect(0, 0, 150, 100);
@@ -63,14 +76,15 @@ elementList.addEventListener('click', (event) => {
 
     // Применение стилей Bootstrap
     if (bootstrapModeCheckbox.checked) {
-        if (elementType === 'button') {
-            newElement.className = 'btn btn-primary';
+        const styleClass = bootstrapStyleSelect.value;
+        if (styleClass) {
+             newElement.className = styleClass;
+        } else if (elementType === 'button') {
+            newElement.className = 'btn';
         } else if (elementType === 'input' || elementType === 'textarea') {
             newElement.className = 'form-control';
         } else if (elementType === 'img') {
             newElement.className = 'img-fluid';
-        } else if (elementType === 'h1' || elementType === 'p') {
-            newElement.className = 'my-3';
         }
     }
 
@@ -167,12 +181,15 @@ function openElementSettings(element) {
     document.getElementById('zIndexInput').value = element.style.zIndex;
     document.getElementById('opacityInput').value = element.style.opacity || '1';
     document.getElementById('bgColorInput').value = rgbToHex(element.style.backgroundColor);
-    document.getElementById('animationSelect').value = element.style.animation;
+    document.getElementById('animationSelect').value = element.style.animationName;
+    document.getElementById('animationDuration').value = parseFloat(element.style.animationDuration) || 1;
+    document.getElementById('animationCount').value = element.style.animationIterationCount || '1';
     document.getElementById('bootstrapClassesInput').value = element.className;
     
     // Скрываем или показываем медиа-поля
     mediaSettingsDiv.style.display = (['img', 'video', 'audio'].includes(elementType)) ? 'block' : 'none';
-
+    cameraBtn.style.display = (elementType === 'div') ? 'block' : 'none';
+    
     // Заполняем специфические поля
     if (elementType === 'img') {
         document.getElementById('contentInput').value = element.src;
@@ -197,7 +214,17 @@ applySettingsBtn.addEventListener('click', () => {
     activeElement.style.zIndex = document.getElementById('zIndexInput').value;
     activeElement.style.opacity = document.getElementById('opacityInput').value;
     activeElement.style.backgroundColor = document.getElementById('bgColorInput').value;
-    activeElement.style.animation = document.getElementById('animationSelect').value;
+    
+    // Настройки анимации
+    const animationName = document.getElementById('animationSelect').value;
+    const animationDuration = document.getElementById('animationDuration').value + 's';
+    const animationCount = document.getElementById('animationCount').value;
+    if (animationName) {
+        activeElement.style.animation = `${animationName} ${animationDuration} ${animationCount}`;
+    } else {
+        activeElement.style.animation = 'none';
+    }
+
     activeElement.className = document.getElementById('bootstrapClassesInput').value;
     
     const bgImage = document.getElementById('bgImageInput').value;
@@ -235,11 +262,46 @@ document.getElementById('mediaFileInput').addEventListener('change', (event) => 
         reader.onload = (e) => {
             const url = e.target.result;
             if (activeElement) {
-                activeElement.src = url;
+                if (['img', 'video', 'audio'].includes(activeElement.tagName.toLowerCase())) {
+                    activeElement.src = url;
+                }
                 document.getElementById('mediaUrlInput').value = url;
             }
         };
         reader.readAsDataURL(file);
+    }
+});
+
+// Захват изображения с камеры
+cameraBtn.addEventListener('click', async () => {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+        cameraStream.srcObject = stream;
+        cameraStream.style.display = 'block';
+        cameraStream.play();
+
+        const captureBtn = document.createElement('button');
+        captureBtn.textContent = 'Сделать снимок';
+        captureBtn.style.cssText = 'position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 1001;';
+        document.body.appendChild(captureBtn);
+
+        captureBtn.addEventListener('click', () => {
+            const context = cameraCanvas.getContext('2d');
+            cameraCanvas.width = cameraStream.videoWidth;
+            cameraCanvas.height = cameraStream.videoHeight;
+            context.drawImage(cameraStream, 0, 0, cameraCanvas.width, cameraCanvas.height);
+            
+            const imageDataURL = cameraCanvas.toDataURL('image/png');
+            if (activeElement) {
+                activeElement.style.backgroundImage = `url("${imageDataURL}")`;
+            }
+            
+            stream.getTracks().forEach(track => track.stop());
+            cameraStream.style.display = 'none';
+            captureBtn.remove();
+        });
+    } catch (error) {
+        alert('Не удалось получить доступ к камере: ' + error.message);
     }
 });
 
@@ -252,7 +314,7 @@ function rgbToHex(rgb) {
 }
 
 // Логика для кнопок настроек проекта
-document.getElementById('addLibraryBtn').addEventListener('click', () => {
+addLibraryBtn.addEventListener('click', () => {
     const url = document.getElementById('libraryUrlInput').value;
     if (url) {
         if (url.endsWith('.css')) {
@@ -270,8 +332,26 @@ document.getElementById('addLibraryBtn').addEventListener('click', () => {
     }
 });
 
-// Код для кнопок сохранения/загрузки/показа кода... (не изменился)
-document.getElementById('saveProjectBtn').addEventListener('click', () => {
+toggleBootstrapBtn.addEventListener('click', () => {
+    const linkId = 'bootstrapLink';
+    let link = document.getElementById(linkId);
+    if (link) {
+        link.remove();
+        alert('Bootstrap отключен.');
+        toggleBootstrapBtn.textContent = 'Подключить Bootstrap';
+    } else {
+        link = document.createElement('link');
+        link.id = linkId;
+        link.rel = 'stylesheet';
+        link.href = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css';
+        document.head.appendChild(link);
+        alert('Bootstrap подключен. Теперь вы можете использовать классы.');
+        toggleBootstrapBtn.textContent = 'Отключить Bootstrap';
+    }
+});
+
+// Код для кнопок сохранения/загрузки/показа кода
+saveProjectBtn.addEventListener('click', () => {
     const projectData = { html: workspace.innerHTML };
     const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -283,7 +363,7 @@ document.getElementById('saveProjectBtn').addEventListener('click', () => {
     alert('Проект сохранён как web-project.json');
 });
 
-document.getElementById('openLocalProjectBtn').addEventListener('click', () => {
+openLocalProjectBtn.addEventListener('click', () => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
@@ -313,7 +393,7 @@ document.getElementById('openLocalProjectBtn').addEventListener('click', () => {
     input.click();
 });
 
-document.getElementById('showCodeBtn').addEventListener('click', () => {
+showCodeBtn.addEventListener('click', () => {
     const htmlCode = `
 <!DOCTYPE html>
 <html>
@@ -334,22 +414,4 @@ document.getElementById('showCodeBtn').addEventListener('click', () => {
     `;
     const codeWindow = window.open('', '_blank');
     codeWindow.document.write(`<pre>${htmlCode.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>`);
-});
-
-document.getElementById('toggleBootstrapBtn').addEventListener('click', () => {
-    const linkId = 'bootstrapLink';
-    let link = document.getElementById(linkId);
-    if (link) {
-        link.remove();
-        alert('Bootstrap отключен.');
-        document.getElementById('toggleBootstrapBtn').textContent = 'Подключить Bootstrap';
-    } else {
-        link = document.createElement('link');
-        link.id = linkId;
-        link.rel = 'stylesheet';
-        link.href = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css';
-        document.head.appendChild(link);
-        alert('Bootstrap подключен. Используйте классы, например "btn btn-primary"');
-        document.getElementById('toggleBootstrapBtn').textContent = 'Отключить Bootstrap';
-    }
 });
