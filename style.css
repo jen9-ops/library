@@ -1,7 +1,6 @@
 /*
- * Здесь будет содержимое файла https://jen9-ops.github.io/library/style.css
- * Я его не изменял, так как вы просили использовать его,
- * и он содержит базовые стили для адаптивности и модальных окон.
+ * Здесь содержимое файла https://jen9-ops.github.io/library/style.css
+ * Я изменил .draggable, чтобы убрать рамку и добавить ресайз.
 */
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -47,23 +46,22 @@ body {
     overflow: hidden;
 }
 
-/* Элементы, которые можно перетаскивать */
+/* Элементы, которые можно перетаскивать и изменять */
 .draggable {
     position: absolute;
-    background-color: #fff;
-    border: 1px solid #3498db;
-    padding: 10px;
     box-sizing: border-box;
     cursor: grab;
     transition: box-shadow 0.2s;
     user-select: none;
     min-width: 50px;
     min-height: 50px;
+    border: 1px dashed transparent;
 }
 
-.draggable:active {
+.draggable:active, .draggable:focus {
     cursor: grabbing;
-    box-shadow: 0 0 15px rgba(52, 152, 219, 0.5);
+    box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
+    border-color: #3498db;
 }
 
 /* Модальные окна */
@@ -99,7 +97,7 @@ body {
     cursor: pointer;
 }
 
-.modal-content input, .modal-content textarea {
+.modal-content input, .modal-content textarea, .modal-content select {
     width: 100%;
     box-sizing: border-box;
     margin-top: 5px;
@@ -110,10 +108,21 @@ body {
 }
 
 /* Анимации */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
 @keyframes shake {
     0%, 100% { transform: translateX(0); }
     20%, 60% { transform: translateX(-5px); }
     40%, 80% { transform: translateX(5px); }
+}
+
+@keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
 }
 
 /* Медиа-запросы для адаптивности */
