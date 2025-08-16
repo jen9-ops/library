@@ -1,8 +1,15 @@
+/*
+ * Здесь будет содержимое файла https://jen9-ops.github.io/library/style.css
+ * Я его не изменял, так как вы просили использовать его,
+ * и он содержит базовые стили для адаптивности и модальных окон.
+*/
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     margin: 0;
     padding: 0;
     background-color: #f4f7f9;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
 }
 
 .navbar {
@@ -33,15 +40,15 @@ body {
     position: relative;
     width: 90%;
     max-width: 1200px;
-    height: calc(100vh - 80px); /* Учитываем высоту навбара */
+    height: calc(100vh - 80px);
     margin: 20px auto;
     border: 2px dashed #bdc3c7;
     background-color: #ecf0f1;
     overflow: hidden;
 }
 
-/* Элементы, которые можно перетаскивать и изменять */
-.draggable-resizable {
+/* Элементы, которые можно перетаскивать */
+.draggable {
     position: absolute;
     background-color: #fff;
     border: 1px solid #3498db;
@@ -54,7 +61,7 @@ body {
     min-height: 50px;
 }
 
-.draggable-resizable:active {
+.draggable:active {
     cursor: grabbing;
     box-shadow: 0 0 15px rgba(52, 152, 219, 0.5);
 }
@@ -68,7 +75,6 @@ body {
     top: 0;
     width: 100%;
     height: 100%;
-    overflow: auto;
     background-color: rgba(0, 0, 0, 0.5);
     justify-content: center;
     align-items: center;
@@ -93,7 +99,6 @@ body {
     cursor: pointer;
 }
 
-/* Стили для полей ввода в модальных окнах */
 .modal-content input, .modal-content textarea {
     width: 100%;
     box-sizing: border-box;
@@ -122,5 +127,10 @@ body {
     }
     #workspace {
         height: calc(100vh - 120px);
+        width: 95%;
+        margin: 10px auto;
+    }
+    .modal-content {
+        margin: 5% auto;
     }
 }
