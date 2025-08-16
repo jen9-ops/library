@@ -204,3 +204,70 @@
     createButton
   };
 });
+
+
+
+/**
+ * Включает перетаскивание элемента по странице.
+ * @param {string} id - обязателен. ID элемента.
+ * @returns {{disable:Function}} объект с методом disable() чтобы снять обработчики
+ */
+function enableDrag(id) {
+  const el = document.getElementById(id);
+  if (!el) {
+    throw new Error(`enableDrag: элемент с id="${id}" не найден`);
+  }
+
+  // Гарантируем корректное позиционирование и drag на мобильных
+  if (getComputedStyle(el).position === 'static') el.style.position = 'absolute';
+  el.style.touchAction = 'none'; // отключает жесты браузера (скролл/зум) над элементом
+
+  let startX = 0, startY = 0, origLeft = 0, origTop = 0, dragging = false;
+
+  function onPointerDown(e) {
+    dragging = true;
+
+    // Фиксируем стартовые позиции курсора/пальца
+    startX = e.clientX;
+    startY = e.clientY;
+
+    // Вычисляем текущие left/top относительно документа
+    const rect = el.getBoundingClientRect();
+    origLeft = (parseFloat(el.style.left) || rect.left + window.scrollX);
+    origTop  = (parseFloat(el.style.top)  || rect.top  + window.scrollY);
+
+    // Захватываем указатель, чтобы не терять событие при быстром движении
+    if (el.setPointerCapture && e.pointerId !== undefined) {
+      try { el.setPointerCapture(e.pointerId); } catch {}
+    }
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    e.preventDefault();
+  }
+
+  function onPointerMove(e) {
+    if (!dragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    el.style.left = (origLeft + dx) + 'px';
+    el.style.top  = (origTop  + dy) + 'px';
+  }
+
+  function onPointerUp() {
+    dragging = false;
+    window.removeEventListener('pointermove', onPointerMove);
+    window.removeEventListener('pointerup', onPointerUp);
+  }
+
+  el.addEventListener('pointerdown', onPointerDown);
+
+  return {
+    disable() {
+      el.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+    }
+  };
+}
+
