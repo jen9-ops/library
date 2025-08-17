@@ -1,417 +1,753 @@
-// Получение элементов DOM
-const workspace = document.getElementById('workspace');
-const createElementBtn = document.getElementById('createElementBtn');
-const createElementModal = document.getElementById('createElementModal');
-const elementList = document.getElementById('elementList');
+// Змінні та константи
+const chesterShiftBtn = document.getElementById('chesterShiftBtn');
+const kozakShiftBtn = document.getElementById('kozakShiftBtn');
 const settingsBtn = document.getElementById('settingsBtn');
-const projectSettingsModal = document.getElementById('projectSettingsModal');
-const elementSettingsModal = document.getElementById('elementSettingsModal');
-const applySettingsBtn = document.getElementById('applySettingsBtn');
-const settingsPanel = document.getElementById('settingsPanel');
-const jsCodeEditor = document.getElementById('jsCodeEditor');
-const bootstrapModeCheckbox = document.getElementById('bootstrapMode');
-const bootstrapStyleSelect = document.getElementById('bootstrapStyle');
-const mediaSettingsDiv = document.getElementById('mediaSettings');
-const addLibraryBtn = document.getElementById('addLibraryBtn');
-const toggleBootstrapBtn = document.getElementById('toggleBootstrapBtn');
-const saveProjectBtn = document.getElementById('saveProjectBtn');
-const openLocalProjectBtn = document.getElementById('openLocalProjectBtn');
-const showCodeBtn = document.getElementById('showCodeBtn');
-const cameraBtn = document.getElementById('cameraBtn');
-const cameraStream = document.getElementById('cameraStream');
-const cameraCanvas = document.getElementById('cameraCanvas');
+const calculatorBtn = document.getElementById('calculatorBtn');
+const settingsModal = document.getElementById('settingsModal');
+const calculatorModal = document.getElementById('calculatorModal');
+const closeSettingsBtn = settingsModal.querySelector('.close-btn');
+const closeCalcBtn = document.getElementById('closeCalcBtn');
+const searchInput = document.getElementById('searchInput');
+const dataForm = document.getElementById('dataForm');
+const rivenInput = document.getElementById('riven');
+const dalnistInput = document.getElementById('dalnist');
+const kutInput = document.getElementById('kut');
+const newTargetBtn = document.getElementById('newTargetBtn');
+const newTargetInput = document.getElementById('newTargetInput');
+const coordsInput = document.getElementById('coordsInput');
+const shotBtn = document.getElementById('shotBtn');
+const undoShotBtn = document.getElementById('undoShotBtn');
+const tableContainer = document.getElementById('table-container');
+const ammoInput = document.getElementById('ammoInput');
+const setAmmoBtn = document.getElementById('setAmmoBtn');
+const totalShotsDisplay = document.getElementById('totalShotsDisplay');
+const remainingAmmoDisplay = document.getElementById('remainingAmmoDisplay');
+const downloadBtn = document.getElementById('downloadBtn');
+const downloadZipBtn = document.getElementById('downloadZipBtn');
+const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+const uploadInput = document.getElementById('uploadInput');
+const clearAllDataBtn = document.getElementById('clearAllDataBtn');
+const calcInput1 = document.getElementById('calcInput1');
+const calcInput2 = document.getElementById('calcInput2');
+const calcAddBtn = document.getElementById('calcAddBtn');
+const calcSubtractBtn = document.getElementById('calcSubtractBtn');
+const calcResult = document.getElementById('calcResult');
+const takeValueMenu = document.getElementById('takeValueMenu');
+const takeRivenBtn = document.getElementById('takeRivenBtn');
+const takeDalnistBtn = document.getElementById('takeDalnistBtn');
+const takeKutBtn = document.getElementById('takeKutBtn');
+const writeBackButtons = document.getElementById('writeBackButtons');
+const writeToRivenBtn = document.getElementById('writeToRivenBtn');
+const writeToDalnistBtn = document.getElementById('writeToDalnistBtn');
+const writeToKutBtn = document.getElementById('writeToKutBtn');
 
-let activeElement = null;
+// Змінні для даних
+let currentShift = localStorage.getItem('currentShift') || 'Козак';
+const shiftsData = JSON.parse(localStorage.getItem('shiftsData')) || {};
+let currentAmmo = parseInt(localStorage.getItem(`${currentShift}-ammo`)) || 0;
+let lastShotTime = null;
 
-// Обработчик для переключения стиля Bootstrap
-bootstrapModeCheckbox.addEventListener('change', () => {
-    bootstrapStyleSelect.style.display = bootstrapModeCheckbox.checked ? 'block' : 'none';
+// Функции для управления UI
+const warn = (msg, isOk = false) => {
+    const warnElement = document.getElementById('warn');
+    warnElement.textContent = msg;
+    warnElement.className = isOk ? 'ok' : 'warn';
+};
+
+const setUI = (isListening) => {
+    const startBtn = document.getElementById('start');
+    const dot = document.getElementById('dot');
+    const status = document.getElementById('status');
+    if (isListening) {
+        startBtn.classList.add('listening');
+        dot.classList.add('live');
+        status.textContent = 'Слухаю...';
+    } else {
+        startBtn.classList.remove('listening');
+        dot.classList.remove('live');
+        status.textContent = 'Не слухаю';
+    }
+};
+
+// =============================================
+// Код для Voice Recognition
+// =============================================
+let SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (!SR) {
+    warn('Розпізнавання голосу не підтримується цим браузером.');
+    setUI(false);
+}
+
+let recognition = null;
+let running = false;
+let wantListen = false;
+let armed = null; // Поточне поле для запису
+
+// Слова для команд
+const commands = {
+    'рівень': 'riven',
+    'дальність': 'dalnist',
+    'кут': 'kut',
+    'додати': 'add',
+    'постріл': 'shot',
+    'відмінити': 'undo',
+    'очистити': 'clear',
+    'нова ціль': 'new_target',
+    'координати': 'coords',
+    'пошук': 'search'
+};
+
+function processText(text) {
+    text = text.trim().toLowerCase();
+    
+    // Перевірка на ключові слова
+    function onlyKeywords(t) {
+        const words = t.split(' ');
+        if (words.length > 2) return false;
+        return words.every(word => Object.keys(commands).includes(word));
+    }
+    
+    // Виявлення ключа команди
+    function detectKey(t) {
+        const words = t.split(' ');
+        for (const word of words) {
+            if (commands[word]) {
+                return commands[word];
+            }
+        }
+        return null;
+    }
+
+    // Витягнення числа
+    function extractNumber(t) {
+        const match = t.match(/\d+/);
+        return match ? parseInt(match[0]) : null;
+    }
+    
+    // Запис у поле
+    function writeToField(key, num) {
+        if (key === 'riven') {
+            rivenInput.value = num;
+        } else if (key === 'dalnist') {
+            dalnistInput.value = num;
+        } else if (key === 'kut') {
+            kutInput.value = num;
+        } else if (key === 'coords') {
+            document.getElementById('coordsInput').value += num;
+        }
+        warn(`Записано ${num} в ${key}`, true);
+    }
+
+    if (text === 'старт') {
+        safeStart();
+        return;
+    }
+
+    if (text === 'стоп') {
+        stopListen();
+        return;
+    }
+
+    if (onlyKeywords(text)){
+        const k = detectKey(text);
+        if (k) armed = k;
+        return;
+    }
+
+    if (armed){
+        const num = extractNumber(text);
+        if (num){
+            writeToField(armed, num);
+            armed = null;
+            return;
+        }
+        const k2 = detectKey(text);
+        if (k2){ armed = k2; }
+        return;
+    }
+
+    const k = detectKey(text);
+    const num = extractNumber(text);
+    if (k && num){
+        writeToField(k, num);
+        armed = null;
+        return;
+    }
+
+    if (k && !num){
+        armed = k;
+        return;
+    }
+}
+
+function setupRecognition() {
+    if (recognition) {
+        recognition.onresult = null;
+        recognition.onerror = null;
+        recognition.onend = null;
+        recognition.stop();
+    }
+    recognition = new SR();
+    recognition.lang = 'uk-UA';
+    recognition.continuous = true;
+    recognition.interimResults = false;
+
+    recognition.onresult = (event) => {
+        let text = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+            text += event.results[i][0].transcript;
+        }
+        console.log("Recognized:", text);
+        processText(text);
+    };
+
+    recognition.onerror = (event) => {
+        warn('Помилка розпізнавання: ' + event.error);
+        running = false;
+        setUI(false);
+    };
+
+    recognition.onend = () => {
+        running = false;
+        if (wantListen) {
+            setTimeout(() => {
+                if (wantListen) {
+                    try {
+                        recognition.start();
+                        running = true;
+                        setUI(true);
+                    } catch (e) {
+                        warn('Помилка перезапуску розпізнавання.');
+                    }
+                }
+            }, 100);
+        } else {
+            setUI(false);
+        }
+    };
+}
+
+let secureOk = window.isSecureContext;
+
+async function ensureMicPermission() {
+    try {
+        const st = await navigator.mediaDevices.getUserMedia({ audio: true });
+        st.getTracks().forEach(t => t.stop());
+        warn('Мікрофон дозволено.', true);
+        return true;
+    } catch (err) {
+        warn('Немає доступу до мікрофона: ' + (err.name || err.message));
+        return false;
+    }
+}
+
+async function safeStart() {
+    if (!SR) return;
+    wantListen = true;
+    setupRecognition();
+    if (running) {
+        setUI(true);
+        return;
+    }
+    if (!secureOk) warn('Увага: сторінка не в захищеному контексті (HTTPS/localhost).');
+    const ok = await ensureMicPermission();
+    if (!ok) {
+        wantListen = false;
+        setUI(false);
+        return;
+    }
+    recognition.start();
+    running = true;
+    setUI(true);
+}
+
+function stopListen() {
+    wantListen = false;
+    if (running && recognition) {
+        recognition.stop();
+    } else {
+        setUI(false);
+    }
+}
+
+document.getElementById('start').addEventListener('click', () => {
+    if (running) {
+        stopListen();
+    } else {
+        safeStart();
+    }
 });
 
-// Открытие и закрытие модальных окон
-function openModal(modalId) {
-    document.getElementById(modalId).style.display = 'flex';
-}
+// =============================================
+// Конец кода для Voice Recognition
+// =============================================
 
-function closeModal(modalId) {
-    document.getElementById(modalId).style.display = 'none';
-}
+// Функції
+const updateShiftButtons = () => {
+    chesterShiftBtn.classList.remove('active');
+    kozakShiftBtn.classList.remove('active');
+    if (currentShift === 'Честер') {
+        chesterShiftBtn.classList.add('active');
+    } else {
+        kozakShiftBtn.classList.add('active');
+    }
+};
 
-createElementBtn.addEventListener('click', () => openModal('createElementModal'));
-settingsBtn.addEventListener('click', () => openModal('projectSettingsModal'));
+const updateTotalStats = () => {
+    let totalShots = 0;
+    if (shiftsData[currentShift]) {
+        shiftsData[currentShift].forEach(target => {
+            totalShots += target.shots.length;
+        });
+    }
+    totalShotsDisplay.textContent = totalShots;
+    remainingAmmoDisplay.textContent = currentAmmo;
+};
 
-document.querySelectorAll('.close-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => closeModal(e.target.closest('.modal').id));
+const saveShiftsData = () => {
+    localStorage.setItem('shiftsData', JSON.stringify(shiftsData));
+    localStorage.setItem(`${currentShift}-ammo`, currentAmmo);
+};
+
+const renderTable = (data) => {
+    const tableBody = document.querySelector('#dataTable tbody');
+    tableBody.innerHTML = '';
+    if (data) {
+        data.forEach((target, index) => {
+            if (target.isDivider) {
+                const dividerRow = document.createElement('tr');
+                dividerRow.innerHTML = `
+                <td colspan="8" class="section-divider">
+                    <div class="divider-content">
+                        <span class="shift-header">Ціль №${target.targetNumber}</span>
+                        <div class="divider-coords">${target.coords}</div>
+                    </div>
+                </td>
+                `;
+                tableBody.appendChild(dividerRow);
+            } else {
+                const row = document.createElement('tr');
+                if (target.highlight === 'yellow') {
+                    row.classList.add('highlight-yellow');
+                } else if (target.highlight === 'orange') {
+                    row.classList.add('highlight-orange');
+                }
+                
+                row.innerHTML = `
+                    <td data-label="Рівень">${target.riven}</td>
+                    <td data-label="Дальність">${target.dalnist}</td>
+                    <td data-label="Кут">${target.kut}</td>
+                    <td data-label="Кількість пострілів">${target.shots.length}</td>
+                    <td data-label="Залишок б/к">${target.ammo || 0}</td>
+                    <td data-label="Час пострілу">${target.lastShotTime || '—'}</td>
+                    <td data-label="Час між пострілами">${target.timeBetweenShots || '—'}</td>
+                    <td data-label="Дії" class="actions-cell">
+                        <button class="shot-row-btn warning" data-index="${index}"><i class="fa-solid fa-forward"></i></button>
+                        <button class="delete-row-btn danger" data-index="${index}"><i class="fa-solid fa-trash-can"></i></button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            }
+        });
+    }
+};
+
+const searchData = () => {
+    const searchTerm = searchInput.value.toLowerCase();
+    const currentShiftData = shiftsData[currentShift] || [];
+    const filteredData = currentShiftData.filter(target => {
+        const targetId = target.targetNumber;
+        return (targetId && targetId.toString().toLowerCase().includes(searchTerm)) || (target.riven && target.riven.toString().includes(searchTerm)) || (target.dalnist && target.dalnist.toString().includes(searchTerm)) || (target.kut && target.kut.toString().includes(searchTerm));
+    });
+    renderTable(filteredData);
+};
+
+
+const handleAddShot = (index) => {
+    if (currentAmmo <= 0) {
+        warn('Недостатньо боєкомплекту.');
+        return;
+    }
+    const now = new Date();
+    const currentShiftData = shiftsData[currentShift];
+    const target = currentShiftData[index];
+
+    let timeBetweenShots = '—';
+    if (target.lastShotTime) {
+        const lastTime = new Date(target.lastShotTime);
+        const diffInSeconds = Math.floor((now - lastTime) / 1000);
+        timeBetweenShots = `${diffInSeconds} сек.`;
+    }
+
+    target.shots.push(now.toISOString());
+    target.lastShotTime = now.toLocaleTimeString('uk-UA');
+    target.timeBetweenShots = timeBetweenShots;
+    currentAmmo--;
+    target.ammo = currentAmmo;
+
+    saveShiftsData();
+    updateTotalStats();
+    renderTable(currentShiftData);
+    warn('Постріл зафіксовано.', true);
+};
+
+const handleDeleteRow = (index) => {
+    const currentShiftData = shiftsData[currentShift];
+    currentShiftData.splice(index, 1);
+    saveShiftsData();
+    renderTable(currentShiftData);
+};
+
+const openModal = (modal) => {
+    modal.style.display = 'block';
+};
+
+const closeModal = (modal) => {
+    modal.style.display = 'none';
+};
+
+// Обробники подій
+document.addEventListener('DOMContentLoaded', () => {
+    updateShiftButtons();
+    updateTotalStats();
+    renderTable(shiftsData[currentShift] || []);
+
+    const COORDS_PREFIX = "37U DQ ";
+    coordsInput.addEventListener('input', (event) => {
+        const input = event.target;
+        const value = input.value;
+        const cursorPosition = input.selectionStart;
+        if (!value.startsWith(COORDS_PREFIX)) {
+            input.value = COORDS_PREFIX;
+            return;
+        }
+        const rawCoords = value.substring(COORDS_PREFIX.length).replace(/[^0-9]/g, '');
+        const formattedCoords = rawCoords.slice(0, 5) + (rawCoords.length > 5 ? ' ' + rawCoords.slice(5, 10) : '');
+        input.value = COORDS_PREFIX + formattedCoords;
+        const newCursorPosition = COORDS_PREFIX.length + formattedCoords.length;
+        input.setSelectionRange(newCursorPosition, newCursorPosition);
+    });
+
+    coordsInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Backspace' && coordsInput.value === COORDS_PREFIX) {
+            event.preventDefault();
+        }
+    });
+});
+
+
+chesterShiftBtn.addEventListener('click', () => {
+    currentShift = 'Честер';
+    localStorage.setItem('currentShift', currentShift);
+    updateShiftButtons();
+    updateTotalStats();
+    renderTable(shiftsData[currentShift] || []);
+});
+
+kozakShiftBtn.addEventListener('click', () => {
+    currentShift = 'Козак';
+    localStorage.setItem('currentShift', currentShift);
+    updateShiftButtons();
+    updateTotalStats();
+    renderTable(shiftsData[currentShift] || []);
+});
+
+settingsBtn.addEventListener('click', () => {
+    openModal(settingsModal);
+});
+
+closeSettingsBtn.addEventListener('click', () => {
+    closeModal(settingsModal);
+});
+
+calculatorBtn.addEventListener('click', () => {
+    openModal(calculatorModal);
+});
+
+closeCalcBtn.addEventListener('click', () => {
+    closeModal(calculatorModal);
 });
 
 window.addEventListener('click', (event) => {
-    if (event.target.classList.contains('modal')) {
-        closeModal(event.target.id);
+    if (event.target === settingsModal) {
+        closeModal(settingsModal);
+    }
+    if (event.target === calculatorModal) {
+        closeModal(calculatorModal);
     }
 });
 
-// Создание элемента на рабочей области
-elementList.addEventListener('click', (event) => {
-    const elementType = event.target.getAttribute('data-element');
-    if (!elementType) return;
+searchInput.addEventListener('input', searchData);
 
-    const newElement = document.createElement(elementType);
-    
-    // Установка стандартного содержимого и атрибутов
-    if (elementType === 'img') {
-        newElement.src = "https://via.placeholder.com/150";
-    } else if (['video', 'audio'].includes(elementType)) {
-        newElement.controls = true;
-        newElement.style.width = '200px';
-        newElement.style.height = '150px';
-    } else if (elementType === 'canvas') {
-        newElement.width = 150;
-        newElement.height = 100;
-        const ctx = newElement.getContext('2d');
-        ctx.fillStyle = '#007bff';
-        ctx.fillRect(0, 0, 150, 100);
-    } else {
-        newElement.textContent = `Новый ${elementType}`;
+dataForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const riven = rivenInput.value;
+    const dalnist = dalnistInput.value;
+    const kut = kutInput.value;
+
+    if (!shiftsData[currentShift]) {
+        shiftsData[currentShift] = [];
     }
 
-    // Применение стилей Bootstrap
-    if (bootstrapModeCheckbox.checked) {
-        const styleClass = bootstrapStyleSelect.value;
-        if (styleClass) {
-             newElement.className = styleClass;
-        } else if (elementType === 'button') {
-            newElement.className = 'btn';
-        } else if (elementType === 'input' || elementType === 'textarea') {
-            newElement.className = 'form-control';
-        } else if (elementType === 'img') {
-            newElement.className = 'img-fluid';
-        }
-    }
-
-    newElement.classList.add('draggable');
-    newElement.style.left = '50px';
-    newElement.style.top = '50px';
-    newElement.style.minWidth = '50px';
-    newElement.style.minHeight = '50px';
-
-    workspace.appendChild(newElement);
-
-    makeDraggableAndResizable(newElement);
-    newElement.addEventListener('dblclick', (e) => {
-        e.stopPropagation();
-        activeElement = newElement;
-        openElementSettings(newElement);
-    });
-    
-    closeModal('createElementModal');
+    const newEntry = {
+        riven: riven,
+        dalnist: dalnist,
+        kut: kut,
+        shots: [],
+        ammo: currentAmmo
+    };
+    shiftsData[currentShift].push(newEntry);
+    saveShiftsData();
+    renderTable(shiftsData[currentShift]);
+    warn('Дані додано.', true);
+    dataForm.reset();
 });
 
-// Функции перетаскивания и изменения размера (для мыши и тач-устройств)
-function makeDraggableAndResizable(element) {
-    let isDragging = false;
-    let isResizing = false;
-    let startX, startY, startWidth, startHeight, dragOffsetX, dragOffsetY;
+newTargetBtn.addEventListener('click', () => {
+    const targetNumber = newTargetInput.value.trim();
+    const coords = coordsInput.value.trim();
 
-    function startAction(e) {
-        e.stopPropagation();
-        const clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
-        const clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
-        const rect = element.getBoundingClientRect();
-        
-        const resizerSize = 10;
-        if (clientX > rect.right - resizerSize && clientY > rect.bottom - resizerSize) {
-            isResizing = true;
-            startX = clientX;
-            startY = clientY;
-            startWidth = rect.width;
-            startHeight = rect.height;
-            document.body.style.cursor = 'se-resize';
-        } else {
-            isDragging = true;
-            dragOffsetX = clientX - rect.left;
-            dragOffsetY = clientY - rect.top;
-            document.body.style.cursor = 'grabbing';
-        }
-        element.style.zIndex = 10;
+    if (!targetNumber) {
+        warn('Будь ласка, введіть номер цілі.');
+        return;
     }
 
-    function doAction(e) {
-        if (!isDragging && !isResizing) return;
-        const clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
-        const clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
-
-        if (isDragging) {
-            let newX = clientX - dragOffsetX;
-            let newY = clientY - dragOffsetY;
-            element.style.left = `${newX}px`;
-            element.style.top = `${newY}px`;
-        }
-        
-        if (isResizing) {
-            let newWidth = startWidth + (clientX - startX);
-            let newHeight = startHeight + (clientY - startY);
-            if (newWidth > 50) element.style.width = `${newWidth}px`;
-            if (newHeight > 50) element.style.height = `${newHeight}px`;
-        }
+    if (!shiftsData[currentShift]) {
+        shiftsData[currentShift] = [];
     }
 
-    function endAction() {
-        isDragging = false;
-        isResizing = false;
-        document.body.style.cursor = 'default';
-        element.style.zIndex = 1;
-    }
+    const newEntry = {
+        targetNumber: targetNumber,
+        coords: coords,
+        riven: '0',
+        dalnist: '0',
+        kut: '0',
+        shots: [],
+        ammo: currentAmmo
+    };
 
-    element.addEventListener('mousedown', startAction);
-    document.addEventListener('mousemove', doAction);
-    document.addEventListener('mouseup', endAction);
-    element.addEventListener('touchstart', startAction);
-    document.addEventListener('touchmove', doAction);
-    document.addEventListener('touchend', endAction);
-}
-
-// Открытие окна настроек элемента
-function openElementSettings(element) {
-    activeElement = element;
-    const elementType = element.tagName.toLowerCase();
-    
-    // Заполняем общие поля
-    document.getElementById('widthInput').value = element.style.width;
-    document.getElementById('heightInput').value = element.style.height;
-    document.getElementById('zIndexInput').value = element.style.zIndex;
-    document.getElementById('opacityInput').value = element.style.opacity || '1';
-    document.getElementById('bgColorInput').value = rgbToHex(element.style.backgroundColor);
-    document.getElementById('animationSelect').value = element.style.animationName;
-    document.getElementById('animationDuration').value = parseFloat(element.style.animationDuration) || 1;
-    document.getElementById('animationCount').value = element.style.animationIterationCount || '1';
-    document.getElementById('bootstrapClassesInput').value = element.className;
-    
-    // Скрываем или показываем медиа-поля
-    mediaSettingsDiv.style.display = (['img', 'video', 'audio'].includes(elementType)) ? 'block' : 'none';
-    cameraBtn.style.display = (elementType === 'div') ? 'block' : 'none';
-    
-    // Заполняем специфические поля
-    if (elementType === 'img') {
-        document.getElementById('contentInput').value = element.src;
-        document.getElementById('bgImageInput').value = element.style.backgroundImage.slice(5, -2);
-    } else if (['video', 'audio'].includes(elementType)) {
-        document.getElementById('mediaUrlInput').value = element.src;
-    } else if (elementType === 'a') {
-        document.getElementById('contentInput').value = element.textContent;
-    } else {
-        document.getElementById('contentInput').value = element.textContent;
-    }
-    
-    jsCodeEditor.value = element.jsCode || '';
-    openModal('elementSettingsModal');
-}
-
-applySettingsBtn.addEventListener('click', () => {
-    if (!activeElement) return;
-
-    activeElement.style.width = document.getElementById('widthInput').value;
-    activeElement.style.height = document.getElementById('heightInput').value;
-    activeElement.style.zIndex = document.getElementById('zIndexInput').value;
-    activeElement.style.opacity = document.getElementById('opacityInput').value;
-    activeElement.style.backgroundColor = document.getElementById('bgColorInput').value;
-    
-    // Настройки анимации
-    const animationName = document.getElementById('animationSelect').value;
-    const animationDuration = document.getElementById('animationDuration').value + 's';
-    const animationCount = document.getElementById('animationCount').value;
-    if (animationName) {
-        activeElement.style.animation = `${animationName} ${animationDuration} ${animationCount}`;
-    } else {
-        activeElement.style.animation = 'none';
-    }
-
-    activeElement.className = document.getElementById('bootstrapClassesInput').value;
-    
-    const bgImage = document.getElementById('bgImageInput').value;
-    activeElement.style.backgroundImage = bgImage ? `url("${bgImage}")` : 'none';
-
-    const elementType = activeElement.tagName.toLowerCase();
-    const content = document.getElementById('contentInput').value;
-    const mediaUrl = document.getElementById('mediaUrlInput').value;
-
-    if (elementType === 'img') {
-        activeElement.src = content;
-    } else if (['video', 'audio'].includes(elementType)) {
-        activeElement.src = mediaUrl;
-    } else if (elementType === 'a') {
-        activeElement.textContent = content;
-        activeElement.href = content;
-    } else {
-        activeElement.textContent = content;
-    }
-
-    activeElement.jsCode = jsCodeEditor.value;
-    try {
-        eval(activeElement.jsCode);
-    } catch (error) {
-        alert('Ошибка в JS-коде: ' + error.message);
-    }
-    closeModal('elementSettingsModal');
-});
-
-// Загрузка локального файла для медиа
-document.getElementById('mediaFileInput').addEventListener('change', (event) => {
-    const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const url = e.target.result;
-            if (activeElement) {
-                if (['img', 'video', 'audio'].includes(activeElement.tagName.toLowerCase())) {
-                    activeElement.src = url;
-                }
-                document.getElementById('mediaUrlInput').value = url;
-            }
+    const sectionExists = shiftsData[currentShift].some(item => item.targetNumber === targetNumber && item.isDivider);
+    if (!sectionExists) {
+        const divider = {
+            targetNumber: targetNumber,
+            coords: coords,
+            isDivider: true
         };
-        reader.readAsDataURL(file);
+        shiftsData[currentShift].push(divider);
     }
+
+    shiftsData[currentShift].push(newEntry);
+    saveShiftsData();
+    renderTable(shiftsData[currentShift]);
+    warn('Нову ціль додано.', true);
+    newTargetInput.value = '';
+    coordsInput.value = '37U DQ ';
 });
 
-// Захват изображения с камеры
-cameraBtn.addEventListener('click', async () => {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-        cameraStream.srcObject = stream;
-        cameraStream.style.display = 'block';
-        cameraStream.play();
-
-        const captureBtn = document.createElement('button');
-        captureBtn.textContent = 'Сделать снимок';
-        captureBtn.style.cssText = 'position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 1001;';
-        document.body.appendChild(captureBtn);
-
-        captureBtn.addEventListener('click', () => {
-            const context = cameraCanvas.getContext('2d');
-            cameraCanvas.width = cameraStream.videoWidth;
-            cameraCanvas.height = cameraStream.videoHeight;
-            context.drawImage(cameraStream, 0, 0, cameraCanvas.width, cameraCanvas.height);
-            
-            const imageDataURL = cameraCanvas.toDataURL('image/png');
-            if (activeElement) {
-                activeElement.style.backgroundImage = `url("${imageDataURL}")`;
-            }
-            
-            stream.getTracks().forEach(track => track.stop());
-            cameraStream.style.display = 'none';
-            captureBtn.remove();
-        });
-    } catch (error) {
-        alert('Не удалось получить доступ к камере: ' + error.message);
-    }
-});
-
-// Вспомогательная функция для конвертации RGB в Hex
-function rgbToHex(rgb) {
-    if (!rgb || rgb === 'none' || rgb === 'transparent' || rgb.includes('rgba(0, 0, 0, 0)')) return '#ffffff';
-    const hex = n => ('0' + parseInt(n).toString(16)).slice(-2);
-    const [r, g, b] = rgb.match(/\d+/g).map(Number);
-    return '#' + hex(r) + hex(g) + hex(b);
-}
-
-// Логика для кнопок настроек проекта
-addLibraryBtn.addEventListener('click', () => {
-    const url = document.getElementById('libraryUrlInput').value;
-    if (url) {
-        if (url.endsWith('.css')) {
-            const link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = url;
-            document.head.appendChild(link);
-        } else if (url.endsWith('.js')) {
-            const script = document.createElement('script');
-            script.src = url;
-            document.body.appendChild(script);
+shotBtn.addEventListener('click', () => {
+    const currentShiftData = shiftsData[currentShift];
+    if (currentShiftData && currentShiftData.length > 0) {
+        const lastEntry = currentShiftData[currentShiftData.length - 1];
+        if (!lastEntry.isDivider) {
+            handleAddShot(currentShiftData.length - 1);
+        } else {
+            warn('Не можна стріляти, остання позиція - роздільник.');
         }
-        alert('Библиотека успешно добавлена!');
-        document.getElementById('libraryUrlInput').value = '';
-    }
-});
-
-toggleBootstrapBtn.addEventListener('click', () => {
-    const linkId = 'bootstrapLink';
-    let link = document.getElementById(linkId);
-    if (link) {
-        link.remove();
-        alert('Bootstrap отключен.');
-        toggleBootstrapBtn.textContent = 'Подключить Bootstrap';
     } else {
-        link = document.createElement('link');
-        link.id = linkId;
-        link.rel = 'stylesheet';
-        link.href = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css';
-        document.head.appendChild(link);
-        alert('Bootstrap подключен. Теперь вы можете использовать классы.');
-        toggleBootstrapBtn.textContent = 'Отключить Bootstrap';
+        warn('Таблиця порожня. Додайте ціль.');
     }
 });
 
-// Код для кнопок сохранения/загрузки/показа кода
-saveProjectBtn.addEventListener('click', () => {
-    const projectData = { html: workspace.innerHTML };
-    const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' });
+undoShotBtn.addEventListener('click', () => {
+    const currentShiftData = shiftsData[currentShift];
+    if (currentShiftData && currentShiftData.length > 0) {
+        const lastEntry = currentShiftData[currentShiftData.length - 1];
+        if (lastEntry.shots.length > 0) {
+            lastEntry.shots.pop();
+            currentAmmo++;
+            lastEntry.ammo = currentAmmo;
+            lastEntry.lastShotTime = lastEntry.shots.length > 0 ? new Date(lastEntry.shots[lastEntry.shots.length - 1]).toLocaleTimeString('uk-UA') : '—';
+            lastEntry.timeBetweenShots = '—';
+            saveShiftsData();
+            updateTotalStats();
+            renderTable(currentShiftData);
+            warn('Останній постріл відмінено.', true);
+        } else {
+            warn('Немає пострілів для відміни.');
+        }
+    } else {
+        warn('Таблиця порожня.');
+    }
+});
+
+tableContainer.addEventListener('click', (event) => {
+    if (event.target.classList.contains('shot-row-btn') || event.target.closest('.shot-row-btn')) {
+        const button = event.target.classList.contains('shot-row-btn') ? event.target : event.target.closest('.shot-row-btn');
+        const index = button.dataset.index;
+        handleAddShot(index);
+    }
+    if (event.target.classList.contains('delete-row-btn') || event.target.closest('.delete-row-btn')) {
+        const button = event.target.classList.contains('delete-row-btn') ? event.target : event.target.closest('.delete-row-btn');
+        const index = button.dataset.index;
+        handleDeleteRow(index);
+    }
+});
+
+setAmmoBtn.addEventListener('click', () => {
+    const newAmmo = parseInt(ammoInput.value);
+    if (!isNaN(newAmmo) && newAmmo >= 0) {
+        currentAmmo = newAmmo;
+        localStorage.setItem(`${currentShift}-ammo`, currentAmmo);
+        updateTotalStats();
+        warn('Боєкомплект встановлено.', true);
+    } else {
+        warn('Будь ласка, введіть дійсне число.');
+    }
+});
+
+downloadBtn.addEventListener('click', () => {
+    const dataStr = JSON.stringify(shiftsData, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'web-project.json';
+    a.download = `data_${currentShift}.json`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    alert('Проект сохранён как web-project.json');
+    warn('Дані збережено.', true);
 });
 
-openLocalProjectBtn.addEventListener('click', () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            try {
-                const projectData = JSON.parse(event.target.result);
-                workspace.innerHTML = projectData.html;
-                Array.from(workspace.children).forEach(el => {
-                    makeDraggableAndResizable(el);
-                    el.addEventListener('dblclick', (e) => {
-                         e.stopPropagation();
-                         activeElement = el;
-                         openElementSettings(el);
-                    });
-                });
-                alert('Проект успешно загружен!');
-            } catch (error) {
-                alert('Ошибка при загрузке файла: ' + error.message);
-            }
-        };
-        reader.readAsText(file);
+downloadZipBtn.addEventListener('click', () => {
+    const zip = new JSZip();
+    zip.file(`data_${currentShift}.json`, JSON.stringify(shiftsData, null, 2));
+    zip.generateAsync({ type: "blob" }).then(function(content) {
+        const url = URL.createObjectURL(content);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `data_${currentShift}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        warn('Дані збережено в ZIP.', true);
+    });
+});
+
+downloadPdfBtn.addEventListener('click', () => {
+    const element = document.getElementById('table-container');
+    const opt = {
+        margin: 1,
+        filename: `table_${currentShift}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
     };
-    input.click();
+    html2pdf().set(opt).from(element).save();
+    warn('Дані збережено в PDF.', true);
 });
 
-showCodeBtn.addEventListener('click', () => {
-    const htmlCode = `
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Мой проект</title>
-    <style>
-        .draggable {
-            position: absolute;
-            box-sizing: border-box;
-            user-select: none;
+uploadInput.addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const content = e.target.result;
+            if (file.name.endsWith('.json')) {
+                const loadedData = JSON.parse(content);
+                Object.assign(shiftsData, loadedData);
+                saveShiftsData();
+                updateTotalStats();
+                renderTable(shiftsData[currentShift] || []);
+                warn('Дані завантажено.', true);
+            } else if (file.name.endsWith('.zip')) {
+                JSZip.loadAsync(content).then(zip => {
+                    const jsonFile = Object.keys(zip.files).find(name => name.endsWith('.json'));
+                    if (jsonFile) {
+                        zip.files[jsonFile].async('string').then(jsonString => {
+                            const loadedData = JSON.parse(jsonString);
+                            Object.assign(shiftsData, loadedData);
+                            saveShiftsData();
+                            updateTotalStats();
+                            renderTable(shiftsData[currentShift] || []);
+                            warn('Дані з ZIP-файлу завантажено.', true);
+                        });
+                    } else {
+                        warn('ZIP-файл не містить JSON-файлу.');
+                    }
+                });
+            } else {
+                warn('Непідтримуваний формат файлу.');
+            }
+        } catch (error) {
+            warn('Помилка при завантаженні файлу: ' + error.message);
         }
-    </style>
-</head>
-<body>
-    ${workspace.innerHTML}
-</body>
-</html>
-    `;
-    const codeWindow = window.open('', '_blank');
-    codeWindow.document.write(`<pre>${htmlCode.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>`);
+    };
+    if (file.name.endsWith('.zip')) {
+        reader.readAsArrayBuffer(file);
+    } else {
+        reader.readAsText(file);
+    }
 });
+
+clearAllDataBtn.addEventListener('click', () => {
+    const confirmation = prompt('Ви впевнені, що хочете видалити всі дані? Введіть "ТАК" для підтвердження.');
+    if (confirmation === 'ТАК') {
+        localStorage.clear();
+        shiftsData = {};
+        currentAmmo = 0;
+        updateTotalStats();
+        renderTable([]);
+        warn('Усі дані видалено.', true);
+        location.reload();
+    } else {
+        warn('Видалення скасовано.');
+    }
+});
+
+// Калькулятор
+let activeInput = null;
+
+calcInput1.addEventListener('focus', () => { activeInput = calcInput1; takeValueMenu.style.display = 'flex'; });
+calcInput1.addEventListener('blur', () => { setTimeout(() => { takeValueMenu.style.display = 'none'; }, 100); });
+calcInput2.addEventListener('focus', () => { activeInput = calcInput2; takeValueMenu.style.display = 'flex'; });
+calcInput2.addEventListener('blur', () => { setTimeout(() => { takeValueMenu.style.display = 'none'; }, 100); });
+
+takeRivenBtn.addEventListener('click', () => {
+    if (activeInput) {
+        activeInput.value = rivenInput.value;
+    }
+});
+takeDalnistBtn.addEventListener('click', () => {
+    if (activeInput) {
+        activeInput.value = dalnistInput.value;
+    }
+});
+takeKutBtn.addEventListener('click', () => {
+    if (activeInput) {
+        activeInput.value = kutInput.value;
+    }
+});
+
+const calculateResult = (operator) => {
+    const val1 = parseFloat(calcInput1.value) || 0;
+    const val2 = parseFloat(calcInput2.value) || 0;
+    let result;
+    if (operator === '+') {
+        result = val1 + val2;
+    } else if (operator === '-') {
+        result = val1 - val2;
+    }
+    calcResult.textContent = result;
+    writeBackButtons.style.display = 'flex';
+};
+
+calcAddBtn.addEventListener('click', () => calculateResult('+'));
+calcSubtractBtn.addEventListener('click', () => calculateResult('-'));
+
+writeToRivenBtn.addEventListener('click', () => { rivenInput.value = calcResult.textContent; closeModal(calculatorModal); });
+writeToDalnistBtn.addEventListener('click', () => { dalnistInput.value = calcResult.textContent; closeModal(calculatorModal); });
+writeToKutBtn.addEventListener('click', () => { kutInput.value = calcResult.textContent; closeModal(calculatorModal); });
