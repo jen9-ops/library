@@ -69,7 +69,6 @@ $('searchToggleBtn').onclick = (e) => {
 
 $('goBtn').onclick = searchMgrs;
 mgrsInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') searchMgrs(); });
-
 map.on('click', hideSearchPanel);
 
 $('layerBtn').onclick = () => {
@@ -94,20 +93,14 @@ const secondModal = $('secondModal');
 const iframe2 = $('iframe2');
 const gpsPermissionModal = $('gpsPermissionModal');
 
-const htmlContent1 = `
-    <!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><title>Окно 1</title><style>body{display:flex;justify-content:center;align-items:center;height:100vh;margin:0;font-family:sans-serif;background:#eef2ff;color:#4338ca;}h1{font-size:2rem;text-align:center;padding:1rem;}</style></head><body><h1>Содержимое для Окна 1</h1></body></html>`;
-
-const htmlContent2 = `
-    <!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><title>Окно 2</title><style>body{display:flex;justify-content:center;align-items:center;height:100vh;margin:0;font-family:sans-serif;background:#f0fdf4;color:#166534;}h1{font-size:2rem;text-align:center;padding:1rem;}</style></head><body><h1>Содержимое для Окна 2</h1></body></html>`;
-
 $('openModalBtn').onclick = () => {
-    iframe1.src = 'data:text/html;charset=utf-8,' + encodeURIComponent(htmlContent1);
+    iframe1.src = '1.html';
     modal.style.display = 'flex'; 
 };
 $('closeModalBtn').onclick = () => { modal.style.display = 'none'; };
 
 $('openSecondModalBtn').onclick = () => { 
-    iframe2.src = 'data:text/html;charset=utf-8,' + encodeURIComponent(htmlContent2);
+    iframe2.src = '2.html';
     secondModal.style.display = 'flex'; 
 };
 $('closeSecondModalBtn').onclick = () => { secondModal.style.display = 'none'; };
@@ -206,9 +199,6 @@ geoBtn.onclick = () => {
             map.setView([latitude, longitude], 16);
             L.circleMarker([latitude, longitude], {radius: 8, color: '#136ef6', fillOpacity: 0.8}).addTo(map)
                 .bindPopup("Вы здесь").openPopup();
-            const coordsDisplay = $('coordsDisplay');
-            coordsDisplay.innerHTML = `Lat: ${latitude.toFixed(5)}<br>Lon: ${longitude.toFixed(5)}`;
-            coordsDisplay.style.display = 'block';
         },
         handleGeoError,
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
