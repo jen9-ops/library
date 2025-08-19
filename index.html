@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <title>MGRS Карта</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <link rel="stylesheet" href="https://jen9-ops.github.io/library/style.css">
+  <link rel="stylesheet" href="map.css">
+
+</head>
+<body>
+
+  <div id="map"></div>
+  <div id="centerCrosshair"></div>
+
+  <div class="controls-container">
+    <button id="searchToggleBtn" class="icon-btn" title="Поиск по MGRS">
+      <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+    </button>
+    <div id="searchPanel" class="search-panel">
+      <input id="mgrsInput" type="tel" placeholder="37U DQ" />
+      <button id="goBtn" class="icon-btn" title="Выполнить поиск">
+         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      </button>
+    </div>
+    <button id="geoBtn" class="icon-btn" title="Мое местоположение">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#333" d="M12 2A10 10 0 1 0 12 22A10 10 0 1 0 12 2ZM11 15.5A1.5 1.5 0 1 1 11 18A1.5 1.5 0 1 1 11 15.5ZM12 11.5A1.5 1.5 0 1 1 12 14A1.5 1.5 0 1 1 12 11.5ZM13 8.5A1.5 1.5 0 1 1 13 11A1.5 1.5 0 1 1 13 8.5ZM15 15A1 1 0 1 1 15 17A1 1 0 1 1 15 15ZM9 9A1 1 0 1 1 9 11A1 1 0 1 1 9 9Z"/></svg>
+    </button>
+    <button id="layerBtn" class="icon-btn" title="Сменить слой карты">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5-10-5-10 5z"/></svg>
+    </button>
+    <button id="snapBtn" class="icon-btn" title="Сохранить как PNG">
+      <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+    </button>
+    <button id="openModalBtn" class="icon-btn" title="Открыть окно 1">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+    </button>
+    <button id="openSecondModalBtn" class="icon-btn" title="Открыть окно 2">
+        <svg viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+    </button>
+  </div>
+
+  <div id="err"></div>
+  <div id="zoomDisplay"></div>
+  <div id="mgrsDisplay"></div>
+  <div id="latLonDisplay"></div>
+  
+  <div id="modal" class="modal-overlay">
+    <iframe id="iframe1" class="modal-iframe"></iframe>
+    <button id="closeModalBtn" class="icon-btn close-modal-btn" title="Закрыть">
+      <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+    </button>
+  </div>
+
+  <div id="secondModal" class="modal-overlay">
+      <iframe id="iframe2" class="modal-iframe"></iframe>
+      <button id="closeSecondModalBtn" class="icon-btn close-modal-btn" title="Закрыть">
+        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+  </div>
+  
+  <div id="gpsPermissionModal" class="modal-overlay">
+      <div class="modal-content">
+          <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem;">Доступ к геолокации заблокирован</h3>
+          <p style="margin-bottom: 1.5rem; color: #4b5563;">Чтобы мы могли показать ваше местоположение, нужно изменить разрешение в настройках вашего браузера.</p>
+          <div style="text-align: left; font-size: 0.9rem; color: #374151;">
+              <strong>Как это сделать:</strong>
+              <ol style="margin-top: 0.5rem; padding-left: 1.25rem;">
+                  <li>Нажмите на иконку замка (🔒) в адресной строке.</li>
+                  <li>Найдите пункт "Геоданные" или "Местоположение".</li>
+                  <li>Выберите "Разрешить".</li>
+                  <li>Перезагрузите страницу.</li>
+              </ol>
+          </div>
+          <button id="closeGpsModalBtn" style="margin-top: 1.5rem; background-color: #3b82f6; color: white; font-weight: bold; padding: 0.5rem 1rem; border-radius: 0.375rem; border: none; cursor: pointer;">Понятно</button>
+      </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mgrs@1.0.0/dist/mgrs.min.js"></script>
+  <script src="https://unpkg.com/leaflet-image@0.4.0/leaflet-image.js"></script>
+  <script src="https://jen9-ops.github.io/library/script.js"></script>
+  <script src="map.js"></script>
+
+</body>
+</html>
