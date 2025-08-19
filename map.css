@@ -38,7 +38,7 @@ html, body {
   transition: width 0.3s ease, opacity 0.3s ease, visibility 0.3s;
 }
 .search-panel.visible {
-    width: 180px; /* Уменьшенная ширина */
+    width: 180px;
     opacity: 1;
     visibility: visible;
 }
@@ -148,23 +148,23 @@ html, body {
 }
 
 .leaflet-control-zoom {
-    bottom: 10px !important;
-    right: 10px !important;
-    top: auto !important;
-    left: auto !important;
-    margin-top: 0 !important;
-    margin-left: 0 !important;
+  bottom: 10px !important;
+  right: 10px !important;
+  top: auto !important;
+  left: auto !important;
+  margin-top: 0 !important;
+  margin-left: 0 !important;
 }
 
 .leaflet-control-zoom-in, .leaflet-control-zoom-out {
-    width: 32px !important; height: 32px !important;
-    background: white !important;
-    border: 1px solid #ddd !important;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.1) !important;
-    border-radius: 6px !important; 
-    color: #333 !important;
-    text-shadow: none !important;
-    font-size: 20px !important; line-height: 32px !important;
+  width: 32px !important; height: 32px !important;
+  background: white !important;
+  border: 1px solid #ddd !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1) !important;
+  border-radius: 6px !important; 
+  color: #333 !important;
+  text-shadow: none !important;
+  font-size: 20px !important; line-height: 32px !important;
 }
 .leaflet-control-zoom-in:hover, .leaflet-control-zoom-out:hover { background-color: #f3f4f6 !important; }
 .leaflet-control-zoom-in { margin-bottom: 6px; }
