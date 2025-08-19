@@ -1,0 +1,239 @@
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+}
+
+.controls-container {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 20;
+  display: flex;
+  flex-direction: row; 
+  align-items: center;
+  gap: 6px; 
+}
+
+.search-panel {
+  display: flex;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  overflow: hidden;
+  height: 32px;
+  width: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition: width 0.3s ease, opacity 0.3s ease, visibility 0.3s;
+}
+.search-panel.visible {
+    width: 180px; /* Уменьшенная ширина */
+    opacity: 1;
+    visibility: visible;
+}
+
+#mgrsInput {
+  border: none;
+  padding: 0 10px;
+  font-size: 14px;
+  font-weight: 500;
+  outline: none;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  color: #000;
+  letter-spacing: 1.5px;
+}
+#mgrsInput::placeholder { 
+    color: #555;
+    font-style: normal;
+    font-weight: 400;
+}
+
+.icon-btn {
+  background: white;
+  border: 1px solid #ddd;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+.icon-btn:hover {
+  background-color: #f3f4f6;
+}
+.icon-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: #333;
+  filter: none;
+}
+
+#goBtn {
+  background: #f3f4f6;
+  border-radius: 0;
+  border: none;
+  border-left: 1px solid #ddd;
+}
+#goBtn:hover { background-color: #e5e7eb; }
+
+#err {
+  position: absolute; bottom: 16px; left: 50%;
+  transform: translateX(-50%); z-index: 20;
+  background-color: #b00020; color: white;
+  padding: 10px 20px; border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  display: none; font-size: 14px;
+}
+
+.modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 100; display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(5px);
+}
+#modal, #secondModal {
+    padding: 44px 10px 10px 10px;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+}
+.modal-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+.close-modal-btn {
+  position: absolute; top: 10px; right: 10px;
+}
+
+/* --- СТИЛИ ДЛЯ GPS МОДАЛЬНОГО ОКНА --- */
+#gpsPermissionModal .modal-content {
+    background: white;
+    padding: 24px;
+    border-radius: 12px;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+#gpsPermissionModal ol {
+    text-align: left;
+    margin: 1rem 0;
+    padding-left: 2rem;
+}
+#gpsPermissionModal li {
+    margin-bottom: 0.5rem;
+}
+
+.leaflet-control-zoom {
+    bottom: 10px !important;
+    right: 10px !important;
+    top: auto !important;
+    left: auto !important;
+    margin-top: 0 !important;
+    margin-left: 0 !important;
+}
+
+.leaflet-control-zoom-in, .leaflet-control-zoom-out {
+    width: 32px !important; height: 32px !important;
+    background: white !important;
+    border: 1px solid #ddd !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1) !important;
+    border-radius: 6px !important; 
+    color: #333 !important;
+    text-shadow: none !important;
+    font-size: 20px !important; line-height: 32px !important;
+}
+.leaflet-control-zoom-in:hover, .leaflet-control-zoom-out:hover { background-color: #f3f4f6 !important; }
+.leaflet-control-zoom-in { margin-bottom: 6px; }
+.leaflet-control-attribution { display: none !important; }
+
+#coordsDisplay {
+  position: absolute; top: 10px; right: 10px; z-index: 20;
+  background: rgba(255, 255, 255, 0.8); color: #333;
+  padding: 6px 10px; border-radius: 6px;
+  font-size: 12px; font-family: 'Courier New', Courier, monospace;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  display: none;
+}
+
+#zoomDisplay {
+    position: absolute;
+    bottom: 86px;
+    left: 10px;
+    z-index: 20;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: bold;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    pointer-events: none;
+}
+#zoomDisplay.visible {
+    opacity: 1;
+}
+
+#mgrsDisplay, #latLonDisplay {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    z-index: 20;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: 'Courier New', Courier, monospace;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+#mgrsDisplay { bottom: 48px; }
+#latLonDisplay { bottom: 10px; }
+#mgrsDisplay:hover, #latLonDisplay:hover {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+@keyframes pulse {
+    0% { transform: translate(-50%, -50%) scale(1); }
+    50% { transform: translate(-50%, -50%) scale(1.1); }
+    100% { transform: translate(-50%, -50%) scale(1); }
+}
+#centerCrosshair {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    background: red;
+    border: 2px solid white;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 21;
+    box-shadow: 0 0 5px rgba(0,0,0,0.5);
+    transition: width 0.3s ease, height 0.3s ease;
+    animation: pulse 2s infinite ease-in-out;
+}
